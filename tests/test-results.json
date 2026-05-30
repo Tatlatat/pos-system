@@ -1,0 +1,285 @@
+{
+  "config": {
+    "configFile": "/Users/tatlatat/Documents/level 2/pos-system/tests/playwright.config.ts",
+    "rootDir": "/Users/tatlatat/Documents/level 2/pos-system/tests/scenarios",
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/Users/tatlatat/Documents/level 2/pos-system/tests/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "",
+        "name": "",
+        "testDir": "/Users/tatlatat/Documents/level 2/pos-system/tests/scenarios",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 120000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "test-results.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.60.0",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "interaction.spec.ts",
+      "file": "interaction.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "Multi-role interaction: Admin, Manager, Cashier 1 & Cashier 2 E2E Sync",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3395,
+                  "errors": [],
+                  "stdout": [
+                    {
+                      "text": "[14:28:05] 🚀 Starting Comprehensive Multi-role Interaction Test (4 Parallel Agents)\n"
+                    },
+                    {
+                      "text": "[14:28:05] 🔑 Logging in as Admin...\n"
+                    },
+                    {
+                      "text": "[14:28:06] ✅ Admin logged in successfully\n"
+                    },
+                    {
+                      "text": "[14:28:06] 🔑 Logging in as Manager...\n"
+                    },
+                    {
+                      "text": "[14:28:06] ✅ Manager logged in successfully\n"
+                    },
+                    {
+                      "text": "[14:28:06] 🔑 Logging in as Cashier 1...\n"
+                    },
+                    {
+                      "text": "[14:28:06] ✅ Cashier 1 logged in successfully (redirected to /pos)\n"
+                    },
+                    {
+                      "text": "[14:28:06] 🔑 Logging in as Cashier 2...\n"
+                    },
+                    {
+                      "text": "[14:28:07] ✅ Cashier 2 logged in successfully (redirected to /pos)\n"
+                    },
+                    {
+                      "text": "[14:28:07] 📦 Admin: Navigating to products page to create a new product...\n"
+                    },
+                    {
+                      "text": "[14:28:07] 📝 Admin: Filling product form (SKU: SKU-HH-1780151287369, Barcode: 893151287369, Name: Mì Hảo Hảo Chua Cay 7369)\n"
+                    },
+                    {
+                      "text": "[14:28:07] ✅ Admin: Product created successfully\n"
+                    },
+                    {
+                      "text": "[14:28:07] 🚚 Manager: Logging in to API to perform Stock In on new product...\n"
+                    },
+                    {
+                      "text": "[14:28:07] 🔎 Manager: Found newly created product ID: a8c2d382-0c52-4392-866a-1a073976cb90\n"
+                    },
+                    {
+                      "text": "[14:28:07] 📥 Manager: Sending Stock In request of 100 units...\n"
+                    },
+                    {
+                      "text": "[14:28:07] ✅ Manager: Stock In of 100 units completed\n"
+                    },
+                    {
+                      "text": "[14:28:07] 📊 Admin: Navigating back to dashboard to read initial revenue...\n"
+                    },
+                    {
+                      "text": "[14:28:07] 💰 Initial Admin Dashboard Revenue: 1,037,880₫\n"
+                    },
+                    {
+                      "text": "[14:28:07] 💰 Initial Manager Dashboard Revenue: 1,037,880₫\n"
+                    },
+                    {
+                      "text": "[14:28:07] 🔍 Cashier 1: Searching for Mì Hảo Hảo on POS...\n"
+                    },
+                    {
+                      "text": "[14:28:07] 📦 Cashier 1: Initial Stock displayed is: 100\n"
+                    },
+                    {
+                      "text": "[14:28:07] 👤 Cashier 1: Creating a new customer with SĐT: 0987287658\n"
+                    },
+                    {
+                      "text": "[14:28:07] ✅ Cashier 1: Customer created and attached to cart\n"
+                    },
+                    {
+                      "text": "[14:28:07] 🛒 Cashier 1: Adding 5 units of product to cart...\n"
+                    },
+                    {
+                      "text": "[14:28:07] 💳 Cashier 1: Processing checkout...\n"
+                    },
+                    {
+                      "text": "[14:28:07] 💵 Cashier 1: Order Total: 32,400₫\n"
+                    },
+                    {
+                      "text": "[14:28:07] ✅ Cashier 1: Checkout successful\n"
+                    },
+                    {
+                      "text": "[14:28:07] 🔍 Cashier 2: Searching for same product to check real-time stock level...\n"
+                    },
+                    {
+                      "text": "[14:28:07] 📦 Cashier 2: Real-time stock displayed is: 95\n"
+                    },
+                    {
+                      "text": "[14:28:07] ✅ Cashier 2: Correctly observed real-time stock decrement!\n"
+                    },
+                    {
+                      "text": "[14:28:07] 👤 Cashier 2: Searching for customer phone 0987287658 created by Cashier 1...\n"
+                    },
+                    {
+                      "text": "[14:28:08] ✅ Cashier 2: Customer sync verified and attached to cart!\n"
+                    },
+                    {
+                      "text": "[14:28:08] 🛒 Cashier 2: Adding 2 units to cart...\n"
+                    },
+                    {
+                      "text": "[14:28:08] 💳 Cashier 2: Processing checkout...\n"
+                    },
+                    {
+                      "text": "[14:28:08] 💵 Cashier 2: Order Total: 12,960₫\n"
+                    },
+                    {
+                      "text": "[14:28:08] ✅ Cashier 2: Checkout successful\n"
+                    },
+                    {
+                      "text": "[14:28:08] 🔄 Dashboards: Verifying sync for total sale amount of 45,360₫...\n"
+                    },
+                    {
+                      "text": "[14:28:08] 💰 New Admin Dashboard Revenue: 1,083,240₫\n"
+                    },
+                    {
+                      "text": "[14:28:08] ✅ Dashboards: Admin revenue sync verified!\n"
+                    },
+                    {
+                      "text": "[14:28:08] 💰 New Manager Dashboard Revenue: 1,083,240₫\n"
+                    },
+                    {
+                      "text": "[14:28:08] ✅ Dashboards: Manager revenue sync verified!\n"
+                    },
+                    {
+                      "text": "[14:28:08] 📄 Manager: Verifying recent invoice in recent sales table...\n"
+                    },
+                    {
+                      "text": "[14:28:08] 📄 Manager: Recent Invoice Info -> Invoice: INV-20260530-MPSG44TRSYJQ, Cashier: Thu ngân 2, Quantity: 2, Time: 21:28:08 30/5/2026\n"
+                    },
+                    {
+                      "text": "[14:28:08] ✅ Manager: Recent invoice values verified successfully (correct cashier, quantity, and date/time format!)\n"
+                    },
+                    {
+                      "text": "[14:28:08] 📈 Manager: Navigating to reports page to check data loads...\n"
+                    },
+                    {
+                      "text": "[14:28:08] ✅ Manager: Reports page loaded correctly\n"
+                    },
+                    {
+                      "text": "[14:28:08] 🏭 Manager: Navigating to inventory page...\n"
+                    },
+                    {
+                      "text": "[14:28:08] ✅ Manager: Inventory warnings loaded correctly\n"
+                    },
+                    {
+                      "text": "[14:28:08] 🚫 Admin: Navigating back to products page to deactivate new product...\n"
+                    },
+                    {
+                      "text": "[14:28:08] 🚫 Admin: Toggling product state to Inactive...\n"
+                    },
+                    {
+                      "text": "[14:28:08] ✅ Admin: Product status set to Inactive (Ngừng)\n"
+                    },
+                    {
+                      "text": "[14:28:08] 🔍 Cashier 1: Searching for deactivated product to verify removal...\n"
+                    },
+                    {
+                      "text": "[14:28:08] ✅ Cashier 1: Deactivated product is hidden successfully!\n"
+                    },
+                    {
+                      "text": "[14:28:08] 📸 Capturing success screenshots for all agents...\n"
+                    },
+                    {
+                      "text": "[14:28:08] ✅ All screenshots saved successfully\n"
+                    },
+                    {
+                      "text": "[14:28:08] 📝 Generating Test Report...\n"
+                    },
+                    {
+                      "text": "📝 Report generated at: /Users/tatlatat/Documents/level 2/pos-system/test-results/interaction/report.md\n"
+                    }
+                  ],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-05-30T14:28:05.509Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "658d4d77d9fd28df6a81-fdaa391257e581ffca2e",
+          "file": "interaction.spec.ts",
+          "line": 6,
+          "column": 5
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-05-30T14:28:05.326Z",
+    "duration": 3665.828,
+    "expected": 1,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

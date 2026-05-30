@@ -1,0 +1,17 @@
+{
+  "name": "pos-system-tests",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "stress": "node run-all.js"
+  },
+  "dependencies": {
+    "@playwright/test": "^1.41.0",
+    "playwright": "^1.41.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  }
+}

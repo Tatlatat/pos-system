@@ -1,0 +1,47 @@
+# Dependencies
+node_modules/
+.pnp/
+.pnp.js
+
+# Build
+dist/
+.next/
+build/
+coverage/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+
+# Database
+*.db
+prisma/*.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker volumes
+postgres-data/
+redis-data/
+
+# Sensitive files
+agy-url.txt
+*.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# Test
+test-results/
+playwright-report/

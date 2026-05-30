@@ -1,0 +1,725 @@
+// ============================================================================
+// Enterprise POS & Inventory Management System — Database Schema
+// ============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// ENUMS
+// ============================================================================
+
+enum UserRole {
+  SUPER_ADMIN
+  BRANCH_MANAGER
+  CASHIER
+  INVENTORY_STAFF
+  OWNER
+}
+
+enum InventoryTransactionType {
+  STOCK_IN        // Nhập kho (purchase, transfer in, return)
+  STOCK_OUT       // Xuất kho (damage, loss)
+  SALE            // Bán hàng (POS checkout)
+  RETURN          // Khách trả hàng
+  ADJUSTMENT      // Kiểm kê điều chỉnh
+  TRANSFER_IN     // Nhận chuyển kho từ branch khác
+  TRANSFER_OUT    // Chuyển kho đến branch khác
+}
+
+enum PurchaseOrderStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  PARTIAL
+  RECEIVED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CASH
+  BANK_TRANSFER
+  E_WALLET
+}
+
+enum SaleStatus {
+  COMPLETED
+  RETURNED
+  CANCELLED
+}
+
+enum GoodsReceiptStatus {
+  PENDING
+  PARTIAL
+  COMPLETED
+}
+
+// ============================================================================
+// BRANCHES — Multi-branch support
+// ============================================================================
+
+model Branch {
+  id        String   @id @default(uuid())
+  code      String   @unique // e.g., BR-001
+  name      String
+  address   String?
+  phone     String?
+  isActive  Boolean  @default(true)
+
+  users              User[]
+  inventoryStocks    InventoryStock[]
+  inventoryTransfers InventoryTransfer[] @relation("SourceBranch")
+  inventoryTransfersDest InventoryTransfer[] @relation("DestBranch")
+  inventoryTxns      InventoryTransaction[]
+  stockAdjustments   StockAdjustment[]
+  sales              Sale[]
+  goodsReceipts      GoodsReceipt[]
+  carts              Cart[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("branches")
+}
+
+// ============================================================================
+// USERS & AUTHENTICATION
+// ============================================================================
+
+model User {
+  id             String   @id @default(uuid())
+  email          String   @unique
+  passwordHash   String
+  fullName       String
+  phone          String?
+  role           UserRole
+  isActive       Boolean  @default(true)
+  refreshToken   String?
+  resetToken     String?
+  resetTokenExpires DateTime?
+  lastLoginAt    DateTime?
+  passwordChangedAt DateTime @default(now())
+
+  branchId String?
+  branch   Branch? @relation(fields: [branchId], references: [id])
+
+  createdSales            Sale[]               @relation("Cashier")
+  cancelledSales          Sale[]               @relation("Canceller")
+  approvedPOs             PurchaseOrder[]       @relation("Approver")
+  createdPOs              PurchaseOrder[]       @relation("POCreator")
+  receivedGoods           GoodsReceipt[]
+  inventoryTxns           InventoryTransaction[]
+  stockAdjustments        StockAdjustment[]
+  ownStockAdjustments     StockAdjustment[]     @relation("ApprovedAdjustments")
+  requestedTransfers      InventoryTransfer[]   @relation("TransferRequester")
+  approvedTransfers       InventoryTransfer[]   @relation("TransferApprover")
+  processedReturns        Return[]              @relation("ReturnProcessor")
+  carts                   Cart[]
+  auditLogs               AuditLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+    @@index([resetToken])
+  @@map("users")
+}
+
+// ============================================================================
+// CATEGORIES
+// ============================================================================
+
+model Category {
+  id       String  @id @default(uuid())
+  name     String  @unique
+  description String?
+  isActive Boolean @default(true)
+
+  products Product[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("categories")
+}
+
+// ============================================================================
+// PRODUCTS
+// ============================================================================
+
+model Product {
+  id           String   @id @default(uuid())
+  sku          String   @unique // Stock Keeping Unit
+  barcode      String   @unique // EAN-13 / UPC
+  name         String
+  description  String?
+  unit         String   @default("cái") // cái, kg, lít, thùng, hộp
+  costPrice    Decimal  @db.Decimal(12, 2) // Giá nhập
+  sellingPrice Decimal  @db.Decimal(12, 2) // Giá bán
+  minStock     Int      @default(0) // Ngưỡng cảnh báo tồn kho tối thiểu
+  maxStock     Int?     // Tồn kho tối đa (optional)
+  isActive     Boolean  @default(true)
+  imageUrl     String?
+  taxRate      Decimal  @default(8.00) @db.Decimal(5, 2) // VAT %
+
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  inventoryStocks InventoryStock[]
+  inventoryTxns   InventoryTransaction[]
+  saleItems       SaleItem[]
+  poItems         PurchaseOrderItem[]
+  grItems         GoodsReceiptItem[]
+  adjustments     StockAdjustment[]
+  cartItems       CartItem[]
+  returnItems     ReturnItem[]
+  transferItems   InventoryTransferItem[]
+  loyaltyRules    LoyaltyRule[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([sku])
+  @@index([barcode])
+  @@index([name])
+  @@index([categoryId])
+  @@map("products")
+}
+
+// ============================================================================
+// INVENTORY STOCKS — Per-branch stock levels
+// ============================================================================
+
+model InventoryStock {
+  id        String   @id @default(uuid())
+  quantity  Int      @default(0) // Non-negative enforced at app level + database CHECK constraint
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+
+  branchId String
+  branch   Branch @relation(fields: [branchId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([productId, branchId])
+  @@index([branchId])
+  @@index([productId])
+  @@map("inventory_stocks")
+}
+
+// ============================================================================
+// INVENTORY TRANSACTIONS — Immutable audit ledger (quan trọng nhất)
+// ============================================================================
+
+model InventoryTransaction {
+  id        String                    @id @default(uuid())
+  type      InventoryTransactionType
+  quantity  Int                       // Positive = in, Negative = out
+  reference String?                   // Invoice #, PO #, Adjustment ID
+  note      String?                   // Reason for adjustment
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+
+  branchId String
+  branch   Branch @relation(fields: [branchId], references: [id])
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([productId, branchId])
+  @@index([createdAt])
+  @@index([type])
+  @@index([reference])
+  @@map("inventory_transactions")
+}
+
+// ============================================================================
+// STOCK ADJUSTMENT
+// ============================================================================
+
+model StockAdjustment {
+  id          String   @id @default(uuid())
+  systemQty   Int      // Số lượng hệ thống trước adjustment
+  actualQty   Int      // Số lượng thực tế sau kiểm kê
+  difference  Int      // actualQty - systemQty (positive or negative)
+  reason      String   // Lý do chênh lệch
+  status      String   @default("PENDING") // PENDING, APPROVED, REJECTED
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+
+  branchId String
+  branch   Branch @relation(fields: [branchId], references: [id])
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  approvedById String?
+  approvedBy   User?   @relation("ApprovedAdjustments", fields: [approvedById], references: [id])
+  approvedAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([productId, branchId])
+  @@map("stock_adjustments")
+}
+
+// ============================================================================
+// INVENTORY TRANSFERS — Between branches
+// ============================================================================
+
+model InventoryTransfer {
+  id              String   @id @default(uuid())
+  referenceNumber String   @unique // TF-YYYYMMDD-XXXX
+  status          String   @default("PENDING") // PENDING, IN_TRANSIT, COMPLETED, CANCELLED
+  notes           String?
+
+  sourceBranchId String
+  sourceBranch   Branch @relation("SourceBranch", fields: [sourceBranchId], references: [id])
+
+  destBranchId String
+  destBranch   Branch @relation("DestBranch", fields: [destBranchId], references: [id])
+
+  requestedById String
+  requestedBy   User   @relation("TransferRequester", fields: [requestedById], references: [id])
+
+  approvedById String?
+  approvedBy   User?   @relation("TransferApprover", fields: [approvedById], references: [id])
+
+  items InventoryTransferItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([sourceBranchId, destBranchId])
+  @@index([status])
+  @@map("inventory_transfers")
+}
+
+model InventoryTransferItem {
+  id            String   @id @default(uuid())
+  quantity      Int
+  receivedQty   Int      @default(0)
+
+  transferId String
+  transfer   InventoryTransfer @relation(fields: [transferId], references: [id])
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+
+  @@unique([transferId, productId])
+  @@map("inventory_transfer_items")
+}
+
+// ============================================================================
+// SUPPLIERS
+// ============================================================================
+
+model Supplier {
+  id            String  @id @default(uuid())
+  code          String  @unique // SUP-001
+  name          String
+  contactPerson String?
+  phone         String?
+  email         String?
+  address       String?
+  isActive      Boolean @default(true)
+
+  purchaseOrders PurchaseOrder[]
+  goodsReceipts  GoodsReceipt[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("suppliers")
+}
+
+// ============================================================================
+// PURCHASE ORDERS
+// ============================================================================
+
+model PurchaseOrder {
+  id              String              @id @default(uuid())
+  poNumber        String              @unique // PO-YYYYMMDD-XXXX
+  status          PurchaseOrderStatus @default(DRAFT)
+  notes           String?
+  totalCost       Decimal             @default(0) @db.Decimal(14, 2)
+
+  supplierId String
+  supplier   Supplier @relation(fields: [supplierId], references: [id])
+
+  createdById String
+  createdBy   User   @relation("POCreator", fields: [createdById], references: [id])
+
+  approvedById String?
+  approvedBy   User?   @relation("Approver", fields: [approvedById], references: [id])
+  approvedAt   DateTime?
+
+  items    PurchaseOrderItem[]
+  receipts GoodsReceipt[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([supplierId])
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderItem {
+  id        String   @id @default(uuid())
+  quantity  Int
+  unitCost  Decimal  @db.Decimal(12, 2)
+  lineTotal Decimal  @db.Decimal(14, 2) // quantity × unitCost
+  receivedQty Int    @default(0)
+
+  poId String
+  po   PurchaseOrder @relation(fields: [poId], references: [id])
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+
+  goodsReceiptItems GoodsReceiptItem[]
+
+  @@unique([poId, productId])
+  @@map("purchase_order_items")
+}
+
+// ============================================================================
+// GOODS RECEIPT
+// ============================================================================
+
+model GoodsReceipt {
+  id              String            @id @default(uuid())
+  receiptNumber   String            @unique // GR-YYYYMMDD-XXXX
+  status          GoodsReceiptStatus @default(PENDING)
+  notes           String?
+
+  poId String
+  po   PurchaseOrder @relation(fields: [poId], references: [id])
+
+  supplierId String
+  supplier   Supplier @relation(fields: [supplierId], references: [id])
+
+  branchId String
+  branch   Branch @relation(fields: [branchId], references: [id])
+
+  receivedById String
+  receivedBy   User   @relation(fields: [receivedById], references: [id])
+
+  items GoodsReceiptItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([poId])
+  @@map("goods_receipts")
+}
+
+model GoodsReceiptItem {
+  id          String @id @default(uuid())
+  quantity    Int
+  unitCost    Decimal @db.Decimal(12, 2)
+  lineTotal   Decimal @db.Decimal(14, 2)
+
+  grId String
+  gr   GoodsReceipt @relation(fields: [grId], references: [id])
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+
+  poItemId String
+  poItem   PurchaseOrderItem @relation(fields: [poItemId], references: [id])
+
+  @@unique([grId, productId])
+  @@map("goods_receipt_items")
+}
+
+// ============================================================================
+// CUSTOMERS & LOYALTY
+// ============================================================================
+
+model Customer {
+  id           String   @id @default(uuid())
+  name         String
+  phone        String   @unique
+  email        String?
+  totalPoints  Int      @default(0)
+  totalSpent   Decimal  @default(0) @db.Decimal(14, 2)
+  registerAt   DateTime @default(now())
+
+  sales       Sale[]
+  carts       Cart[]
+  returns     Return[]
+  loyaltyTxns LoyaltyTransaction[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([phone])
+  @@map("customers")
+}
+
+model LoyaltyRule {
+  id             String @id @default(uuid())
+  spendPerPoint  Decimal @db.Decimal(12, 2) // 100,000 VND = 1 point
+  pointValue     Decimal @db.Decimal(12, 2) // 1 point = ? VND
+  isActive       Boolean @default(true)
+
+  productId String?
+  product   Product? @relation(fields: [productId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("loyalty_rules")
+}
+
+model LoyaltyTransaction {
+  id        String   @id @default(uuid())
+  points    Int      // Positive = earned, Negative = redeemed
+  type      String   // EARNED, REDEEMED, EXPIRED
+  reference String?  // Sale ID or other reference
+
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id])
+
+  saleId String?
+  sale   Sale? @relation(fields: [saleId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([customerId])
+  @@map("loyalty_transactions")
+}
+
+// ============================================================================
+// POINT OF SALE — Cart
+// ============================================================================
+
+model Cart {
+  id        String   @id @default(uuid())
+  isActive  Boolean  @default(true)
+
+  branchId String
+  branch   Branch @relation(fields: [branchId], references: [id])
+
+  cashierId String
+  cashier   User   @relation(fields: [cashierId], references: [id])
+
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id])
+
+  items CartItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([cashierId, isActive])
+  @@map("carts")
+}
+
+model CartItem {
+  id        String @id @default(uuid())
+  quantity  Int
+  unitPrice Decimal @db.Decimal(12, 2) // Giá tại thời điểm thêm vào giỏ
+  discount  Decimal @default(0) @db.Decimal(12, 2)
+  subtotal  Decimal @db.Decimal(14, 2) // (unitPrice - discount) × quantity
+
+  cartId String
+  cart   Cart @relation(fields: [cartId], references: [id])
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+
+  @@unique([cartId, productId])
+  @@map("cart_items")
+}
+
+// ============================================================================
+// POINT OF SALE — Sales
+// ============================================================================
+
+model Sale {
+  id              String     @id @default(uuid())
+  invoiceNo       String     @unique // INV-YYYYMMDD-XXXXX
+  subtotal        Decimal    @db.Decimal(14, 2)
+  taxAmount       Decimal    @default(0) @db.Decimal(14, 2)
+  discountAmount  Decimal    @default(0) @db.Decimal(14, 2)
+  totalAmount     Decimal    @db.Decimal(14, 2)
+  status          SaleStatus @default(COMPLETED)
+  notes           String?
+  returnDeadline  DateTime   // 7 days from sale date
+
+  branchId String
+  branch   Branch @relation(fields: [branchId], references: [id])
+
+  cashierId String
+  cashier   User @relation("Cashier", fields: [cashierId], references: [id])
+
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id])
+
+  cancelledById String?
+  cancelledBy   User?     @relation("Canceller", fields: [cancelledById], references: [id])
+  cancelledAt   DateTime?
+  cancelReason  String?
+
+  items       SaleItem[]
+  payments    Payment[]
+  returns     Return[]
+  loyaltyTxns LoyaltyTransaction[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([invoiceNo])
+  @@index([branchId, createdAt])
+  @@index([cashierId])
+  @@index([customerId])
+  @@index([createdAt])
+  @@map("sales")
+}
+
+model SaleItem {
+  id        String @id @default(uuid())
+  quantity  Int
+  unitPrice Decimal @db.Decimal(12, 2) // Giá bán tại thời điểm checkout
+  costPrice Decimal @db.Decimal(12, 2) // Giá nhập tại thời điểm checkout (cho COGS)
+  discount  Decimal @default(0) @db.Decimal(12, 2)
+  subtotal  Decimal @db.Decimal(14, 2) // (unitPrice - discount) × quantity
+
+  saleId String
+  sale   Sale @relation(fields: [saleId], references: [id])
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+
+  returnItems ReturnItem[]
+
+  @@unique([saleId, productId])
+  @@index([productId])
+  @@map("sale_items")
+}
+
+// ============================================================================
+// PAYMENTS
+// ============================================================================
+
+model Payment {
+  id        String        @id @default(uuid())
+  method    PaymentMethod
+  amount    Decimal       @db.Decimal(14, 2)
+  reference String?       // Bank transaction code, e-wallet ref
+  changeDue Decimal       @default(0) @db.Decimal(14, 2) // Tiền thừa trả khách (cash)
+
+  saleId String
+  sale   Sale @relation(fields: [saleId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([saleId])
+  @@map("payments")
+}
+
+// ============================================================================
+// RETURNS
+// ============================================================================
+
+model Return {
+  id        String   @id @default(uuid())
+  returnNo  String   @unique // RET-YYYYMMDD-XXXXX
+  reason    String
+  status    String   @default("PENDING") // PENDING, APPROVED, REJECTED
+
+  saleId String
+  sale   Sale @relation(fields: [saleId], references: [id])
+
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id])
+
+  processedById String
+  processedBy   User     @relation("ReturnProcessor", fields: [processedById], references: [id])
+
+  items ReturnItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([saleId])
+  @@map("returns")
+}
+
+model ReturnItem {
+  id       String @id @default(uuid())
+  quantity Int
+  refundAmount Decimal @db.Decimal(14, 2)
+  condition String @default("GOOD") // GOOD, DAMAGED
+
+  returnId String
+  return_  Return @relation(fields: [returnId], references: [id])
+
+  saleItemId String
+  saleItem   SaleItem @relation(fields: [saleItemId], references: [id])
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+
+  @@unique([returnId, saleItemId])
+  @@map("return_items")
+}
+
+// ============================================================================
+// AUDIT LOG
+// ============================================================================
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  action    String   // CREATE, UPDATE, DELETE, LOGIN, LOGOUT, CANCEL, ADJUST, etc.
+  entity    String   // Product, Sale, Inventory, User, etc.
+  entityId  String?  // ID of affected record
+  oldValue  Json?    // Previous state (JSON)
+  newValue  Json?    // New state (JSON)
+  ipAddress String?
+  userAgent String?
+
+  userId String
+  user   User @relation(fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([entity, entityId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ============================================================================
+// SYSTEM SETTINGS
+// ============================================================================
+
+model SystemSetting {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     String
+  group     String   @default("general")
+  description String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("system_settings")
+}

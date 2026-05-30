@@ -1,0 +1,118 @@
+# ============================================================================
+# Enterprise POS & Inventory Management System — Production Deployment
+# ============================================================================
+# Usage:
+#   docker compose -f docker-compose.prod.yml up -d
+#
+# Environment variables (.env.production):
+#   JWT_SECRET, JWT_REFRESH_SECRET — strong random keys
+#   DATABASE_URL — PostgreSQL connection string
+#   DOMAIN — Your domain for CORS (e.g. https://pos.example.com)
+# ============================================================================
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: pos-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-pos_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-pos_password}
+      POSTGRES_DB: ${DB_NAME:-pos_db}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USER:-pos_user} -d ${DB_NAME:-pos_db}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
+
+  redis:
+    image: redis:7-alpine
+    container_name: pos-redis
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD:-redis_pass}
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', '-a', '${REDIS_PASSWORD:-redis_pass}', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.5'
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: ../docker/Dockerfile.backend
+    container_name: pos-backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: postgresql://${DB_USER:-pos_user}:${DB_PASSWORD:-pos_password}@postgres:5432/${DB_NAME:-pos_db}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-8h}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?JWT_REFRESH_SECRET is required}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis_pass}@redis:6379
+      CORS_ORIGIN: ${DOMAIN:-http://localhost:3000}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: ../docker/Dockerfile.frontend
+    container_name: pos-frontend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: ${DOMAIN:-http://localhost:3000}/api
+    depends_on:
+      - backend
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+
+  nginx:
+    image: nginx:alpine
+    container_name: pos-nginx
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./docker/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - backend
+      - frontend
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+          cpus: '0.25'
+
+volumes:
+  postgres-data:
+  redis-data:

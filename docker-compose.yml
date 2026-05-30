@@ -1,0 +1,79 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: pos-postgres
+    environment:
+      POSTGRES_USER: pos_user
+      POSTGRES_PASSWORD: pos_password
+      POSTGRES_DB: pos_db
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U pos_user -d pos_db']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: pos-redis
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: ../docker/Dockerfile.backend
+    container_name: pos-backend
+    ports:
+      - '3333:3333'
+    environment:
+      DATABASE_URL: postgresql://pos_user:pos_password@postgres:5432/pos_db
+      JWT_SECRET: "${JWT_SECRET:-dev-jwt-secret}"
+      JWT_EXPIRES_IN: 8h
+      JWT_REFRESH_SECRET: "${JWT_REFRESH_SECRET:-dev-refresh-secret}"
+      JWT_REFRESH_EXPIRES_IN: 7d
+      REDIS_URL: redis://redis:6379
+      PORT: 3333
+      NODE_ENV: development
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend/src:/app/src
+      - ./backend/prisma:/app/prisma
+      - ./backend/package.json:/app/package.json
+    command: sh -c "npx prisma generate && npx prisma migrate deploy && npm run start:dev"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: ../docker/Dockerfile.frontend
+    container_name: pos-frontend
+    ports:
+      - '3000:3000'
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:3001/api
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/package.json:/app/package.json
+    command: sh -c "npm run dev"
+
+volumes:
+  postgres-data:
+  redis-data:

@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+.pnp/
+.pnp.js
+
+# Build
+dist/
+.next/
+build/
+coverage/
+
+# Environment
+.env
+.env.local
+.env.*.local
+!.env.production
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker volumes
+postgres-data/
+redis-data/
+
+# Git
+.git/
+.gitignore
+
+# Tests
+test-results/
+playwright-report/
+node_modules/
