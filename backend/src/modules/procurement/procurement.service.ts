@@ -42,15 +42,12 @@ export class ProcurementService {
           createdById: userId,
           notes: dto.notes,
           items: {
-            create: dto.items.map((item) => {
-              const product = products.find((p) => p.id === item.productId)!;
-              return {
-                productId: item.productId,
-                quantity: item.quantity,
-                unitCost: item.unitCost,
-                lineTotal: item.quantity * item.unitCost,
-              };
-            }),
+            create: dto.items.map((item) => ({
+              productId: item.productId,
+              quantity: item.quantity,
+              unitCost: item.unitCost,
+              lineTotal: item.quantity * item.unitCost,
+            })),
           },
         },
         include: {

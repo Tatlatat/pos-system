@@ -2,7 +2,7 @@ import {
   Controller, Get, Post, Patch,
   Body, Param, Query, UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
+import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
 import { ProcurementService } from './procurement.service';
 import { CreatePurchaseOrderDto, GoodsReceiptDto } from './dto/procurement.dto';

@@ -6,6 +6,7 @@ import {
   Body,
   Param,
   Query,
+  ForbiddenException,
   HttpCode,
   HttpStatus,
   UseGuards,
@@ -40,14 +41,22 @@ export class UsersController {
   @ApiQuery({ name: 'page', required: false })
   @ApiQuery({ name: 'limit', required: false })
   async findAll(@Query('page') page = 1, @Query('limit') limit = 20, @CurrentUser() user: JwtPayload) {
-    return this.usersService.findAll(+page, Math.min(+limit, 100));
+    if (user.role === UserRole.BRANCH_MANAGER && !user.branchId) {
+      throw new ForbiddenException('Branch manager must be assigned to a branch');
+    }
+    const branchId = user.role === UserRole.BRANCH_MANAGER ? user.branchId || undefined : undefined;
+    return this.usersService.findAll(+page, Math.min(+limit, 100), branchId);
   }
 
   @Get(':id')
   @Roles(UserRole.SUPER_ADMIN, UserRole.BRANCH_MANAGER)
   @ApiOperation({ summary: 'Get user by ID' })
-  async findOne(@Param('id') id: string) {
-    return this.usersService.findOne(id);
+  async findOne(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
+    if (user.role === UserRole.BRANCH_MANAGER && !user.branchId) {
+      throw new ForbiddenException('Branch manager must be assigned to a branch');
+    }
+    const branchId = user.role === UserRole.BRANCH_MANAGER ? user.branchId || undefined : undefined;
+    return this.usersService.findOne(id, branchId);
   }
 
   @Patch(':id')

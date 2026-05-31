@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
+  ForbiddenException,
   Logger,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
@@ -90,7 +91,7 @@ export class UsersService {
     return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, branchId?: string) {
     const user = await this.prisma.user.findUnique({
       where: { id },
       select: {
@@ -109,6 +110,9 @@ export class UsersService {
     });
 
     if (!user) throw new NotFoundException('User not found');
+    if (branchId && user.branchId !== branchId) {
+      throw new ForbiddenException('You can only view users from your assigned branch');
+    }
     return user;
   }
 

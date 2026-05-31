@@ -1,7 +1,7 @@
 import {
   Controller, Get, Post, Patch, Body, Param, Query, UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
 import { SuppliersService } from './suppliers.service';
 import { CreateSupplierDto } from './dto/create-supplier.dto';

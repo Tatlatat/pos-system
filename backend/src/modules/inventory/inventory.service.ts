@@ -2,10 +2,13 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
   Logger,
 } from '@nestjs/common';
+import { UserRole } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 import {
   StockInDto,
   StockOutDto,
@@ -147,10 +150,14 @@ export class InventoryService {
   // ==========================================================================
   // UC-14: Inventory Transfer — Chuyển kho giữa branches
   // ==========================================================================
-  async transfer(dto: TransferDto, userId: string) {
+  async transfer(dto: TransferDto, user: JwtPayload) {
     if (dto.sourceBranchId === dto.destBranchId) {
       throw new BadRequestException('Source and destination branches must be different');
     }
+    if (user.role !== UserRole.SUPER_ADMIN && dto.sourceBranchId !== user.branchId) {
+      throw new ForbiddenException('You can only transfer stock from your assigned branch');
+    }
+    const userId = user.sub;
 
     // Validate products exist
     const productIds = dto.items.map((i) => i.productId);

@@ -1,6 +1,5 @@
-import { IsString, IsNumber, IsUUID, IsOptional, Min, IsArray, ArrayMinSize, IsEnum } from 'class-validator';
+import { IsString, IsNumber, IsUUID, IsOptional, Min, IsArray, ArrayMinSize } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { PurchaseOrderStatus } from '@prisma/client';
 
 export class CreatePoItemDto {
   @ApiProperty()

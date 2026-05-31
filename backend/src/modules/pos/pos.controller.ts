@@ -1,6 +1,6 @@
 import {
   Controller, Get, Post, Patch, Delete,
-  Body, Param, Query, UseGuards,
+  Body, Param, Query, UseGuards, ForbiddenException,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
@@ -79,8 +79,8 @@ export class PosController {
   @Get('receipt/:saleId')
   @Roles(UserRole.CASHIER, UserRole.BRANCH_MANAGER, UserRole.OWNER)
   @ApiOperation({ summary: 'Get sale receipt data (UC-19)' })
-  async getReceipt(@Param('saleId') saleId: string) {
-    return this.posService.getReceipt(saleId);
+  async getReceipt(@Param('saleId') saleId: string, @CurrentUser() user: JwtPayload) {
+    return this.posService.getReceipt(saleId, user);
   }
 
   // ===== Return =====
@@ -88,7 +88,7 @@ export class PosController {
   @Roles(UserRole.BRANCH_MANAGER, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Return products (UC-20) — Manager only' })
   async returnProducts(@Body() dto: ReturnDto, @CurrentUser() user: JwtPayload) {
-    return this.posService.returnProducts(dto, user.sub);
+    return this.posService.returnProducts(dto, user);
   }
 
   // ===== Cancel Invoice =====
@@ -100,7 +100,7 @@ export class PosController {
     @Body() dto: CancelInvoiceDto,
     @CurrentUser() user: JwtPayload,
   ) {
-    return this.posService.cancelInvoice(saleId, dto, user.sub);
+    return this.posService.cancelInvoice(saleId, dto, user);
   }
 
   // ===== Sales list =====
@@ -113,6 +113,12 @@ export class PosController {
     @Query('page') page = 1,
     @Query('limit') limit = 20,
   ) {
-    return this.posService.listSales(user.branchId!, +page, +limit);
+    if (user.role !== UserRole.OWNER && user.role !== UserRole.SUPER_ADMIN && !user.branchId) {
+      throw new ForbiddenException('User must be assigned to a branch');
+    }
+    const branchId = user.role === UserRole.OWNER || user.role === UserRole.SUPER_ADMIN
+      ? undefined
+      : user.branchId || undefined;
+    return this.posService.listSales(branchId, +page, +limit);
   }
 }

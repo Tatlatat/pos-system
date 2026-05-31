@@ -7,7 +7,8 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
-import { SaleStatus } from '@prisma/client';
+import { SaleStatus, UserRole } from '@prisma/client';
+import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 import {
   AddToCartDto, CheckoutDto, UpdateCartItemDto,
   ReturnDto, CancelInvoiceDto,
@@ -198,7 +199,7 @@ export class PosService {
   // ==========================================================================
   // Set customer for cart
   // ==========================================================================
-  async setCartCustomer(customerId: string, cashierId: string) {
+  async setCartCustomer(customerId: string | null | undefined, cashierId: string) {
     const cart = await this.prisma.cart.findFirst({
       where: { cashierId, isActive: true },
     });
@@ -206,9 +207,19 @@ export class PosService {
       throw new NotFoundException('No active cart');
     }
 
+    if (customerId) {
+      const customer = await this.prisma.customer.findUnique({
+        where: { id: customerId },
+        select: { id: true },
+      });
+      if (!customer) {
+        throw new NotFoundException('Customer not found');
+      }
+    }
+
     await this.prisma.cart.update({
       where: { id: cart.id },
-      data: { customerId },
+      data: { customerId: customerId || null },
     });
 
     return this.getActiveCart(cashierId, cart.branchId);
@@ -440,7 +451,7 @@ export class PosService {
   // ==========================================================================
   // UC-19: Get receipt data
   // ==========================================================================
-  async getReceipt(saleId: string) {
+  async getReceipt(saleId: string, user: JwtPayload) {
     const sale = await this.prisma.sale.findUnique({
       where: { id: saleId },
       include: {
@@ -457,19 +468,22 @@ export class PosService {
     if (!sale) {
       throw new NotFoundException('Sale not found');
     }
+    this.assertSaleBranchAccess(sale.branchId, user);
     return sale;
   }
 
   // ==========================================================================
   // UC-20: Return Product (with double-refund guard)
   // ==========================================================================
-  async returnProducts(dto: ReturnDto, userId: string) {
+  async returnProducts(dto: ReturnDto, user: JwtPayload) {
     const sale = await this.prisma.sale.findUnique({
       where: { id: dto.saleId },
       include: { items: { include: { product: true } } },
     });
 
     if (!sale) throw new NotFoundException('Sale not found');
+    this.assertSaleBranchAccess(sale.branchId, user);
+    const userId = user.sub;
     if (sale.status === 'CANCELLED') {
       throw new BadRequestException('Cannot return a cancelled invoice');
     }
@@ -662,7 +676,8 @@ export class PosService {
   // ==========================================================================
   // Cancel Invoice
   // ==========================================================================
-  async cancelInvoice(saleId: string, dto: CancelInvoiceDto, userId: string) {
+  async cancelInvoice(saleId: string, dto: CancelInvoiceDto, user: JwtPayload) {
+    const userId = user.sub;
     const updated = await this.prisma.$transaction(async (tx) => {
       const sale = await tx.sale.findUnique({
         where: { id: saleId },
@@ -670,6 +685,7 @@ export class PosService {
       });
 
       if (!sale) throw new NotFoundException('Sale not found');
+      this.assertSaleBranchAccess(sale.branchId, user);
       if (sale.status === 'CANCELLED') {
         throw new BadRequestException('Invoice already cancelled');
       }
@@ -742,12 +758,13 @@ export class PosService {
   // ==========================================================================
   // List sales
   // ==========================================================================
-  async listSales(branchId: string, page = 1, limit = 20) {
+  async listSales(branchId?: string, page = 1, limit = 20) {
     const skip = (page - 1) * limit;
+    const where = branchId ? { branchId } : {};
 
     const [data, total] = await Promise.all([
       this.prisma.sale.findMany({
-        where: { branchId },
+        where,
         skip,
         take: limit,
         include: {
@@ -758,7 +775,7 @@ export class PosService {
         },
         orderBy: { createdAt: 'desc' },
       }),
-      this.prisma.sale.count({ where: { branchId } }),
+      this.prisma.sale.count({ where }),
     ]);
 
     return {
@@ -806,6 +823,12 @@ export class PosService {
         grandTotal: subtotal + roundedTax,
       },
     };
+  }
+
+  private assertSaleBranchAccess(branchId: string, user: JwtPayload) {
+    if (user.role === UserRole.SUPER_ADMIN || user.role === UserRole.OWNER) return;
+    if (user.branchId && user.branchId === branchId) return;
+    throw new ForbiddenException('You do not have access to sales from this branch');
   }
 
   /** Retry a Prisma transaction on P2002 (unique constraint) */

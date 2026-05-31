@@ -1,5 +1,5 @@
 import {
-  Controller, Get, Post, Body, Param, Query, UseGuards,
+  Controller, Get, Post, Body, Query, UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
@@ -52,7 +52,7 @@ export class InventoryController {
   @Roles(UserRole.SUPER_ADMIN, UserRole.BRANCH_MANAGER, UserRole.INVENTORY_STAFF)
   @ApiOperation({ summary: 'Transfer stock between branches' })
   async transfer(@Body() dto: TransferDto, @CurrentUser() user: JwtPayload) {
-    return this.inventoryService.transfer(dto, user.sub);
+    return this.inventoryService.transfer(dto, user);
   }
 
   // ===== UC-15: Low Stock Alert =====

@@ -1,4 +1,4 @@
-import { Controller, Post, Body, HttpCode, HttpStatus, Get, UseGuards } from '@nestjs/common';
+import { Controller, Post, Body, HttpCode, HttpStatus, Get } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';

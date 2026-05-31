@@ -149,7 +149,7 @@ export default function PosPage() {
     }
   };
 
-  const setCartCustomer = async (customerId: string) => {
+  const setCartCustomer = async (customerId: string | null) => {
     try { await apiClient.post('/pos/cart/customer', { customerId }); loadCart(); }
     catch { /* ignore */ }
   };
@@ -311,7 +311,7 @@ hr{border:none;border-top:1px dashed #000;margin:8px 0}
                 <p className="text-sm font-medium">{cart.customer.name}</p>
                 <p className="text-xs text-gray-500">{cart.customer.phone}</p>
               </div>
-              <button onClick={() => setCartCustomer('')} className="text-xs text-red-600">Gỡ</button>
+              <button onClick={() => setCartCustomer(null)} className="text-xs text-red-600">Gỡ</button>
             </div>
           )}
           {showCreateCustomer && (
