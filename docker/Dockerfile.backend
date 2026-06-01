@@ -40,4 +40,4 @@ HEALTHCHECK --interval=15s --timeout=5s --retries=3 \
   CMD curl -f http://localhost:3001/health || exit 1
 
 # @prisma/client is already compiled; prisma CLI is not needed at runtime
-CMD ["node", "dist/main"]
+CMD ["node", "dist/src/main"]

@@ -4,7 +4,7 @@
 # Usage:
 #   docker compose -f docker-compose.prod.yml up -d
 #
-# Environment variables (.env.production):
+# Environment variables (copy .env.production.example to .env and fill in):
 #   JWT_SECRET, JWT_REFRESH_SECRET — strong random keys
 #   DATABASE_URL — PostgreSQL connection string
 #   DOMAIN — Your domain for CORS (e.g. https://pos.example.com)

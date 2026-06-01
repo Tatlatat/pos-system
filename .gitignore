@@ -16,7 +16,14 @@ coverage/
 .env.production
 backend/.env
 frontend/.env.local
+# Keep example/template env files tracked
+!.env.example
+!.env.production.example
+
+# Local tooling / scratch files (not part of the project)
+agy-url.txt
 backend/agy-login.py
+backend/agy-auth.py
 
 
 # Database

@@ -101,7 +101,7 @@ npm run dev
 
 # 5. Open in browser
 # Frontend: http://localhost:3000
-# API docs: http://localhost:3333/api/docs
+# API docs: http://localhost:3001/api/docs
 ```
 
 ### Demo Credentials
@@ -143,14 +143,14 @@ docker compose -f docker-compose.prod.yml up -d --scale backend=3  # Scale horiz
 
 ## 🔐 Security
 
-- **JWT** access tokens (15 min) + refresh tokens (7 days) — no fallback secrets in code
+- **JWT** access tokens (8h) + refresh tokens (7 days) — no fallback secrets in code
 - **RBAC guards** on every protected endpoint via NestJS `@Roles()` decorator
 - **Password hashing** with bcrypt (10 rounds)
 - **Helmet** security headers applied globally
 - **Rate limiting** — 30 login attempts/min via `@nestjs/throttler`
 - **Input validation** — `class-validator` DTOs with `@IsNotEmpty()` on all required fields
 - **SQL injection** protection via Prisma parameterized queries
-- **No sensitive files in git** — `.env`, `.env.production`, `backend/agy-*.py` all in `.gitignore`
+- **No sensitive files in git** — real `.env` files are git-ignored; only `.env.example` and `.env.production.example` templates are committed
 
 ---
 
@@ -165,7 +165,7 @@ docker compose -f docker-compose.prod.yml up -d --scale backend=3  # Scale horiz
 | `JWT_REFRESH_EXPIRES_IN` | ❌ | `7d` | Refresh token TTL |
 | `REDIS_URL` | ❌ | `redis://localhost:6379` | Redis connection string |
 | `CORS_ORIGIN` | ❌ | `http://localhost:3000` | Allowed CORS origins (comma-separated) |
-| `PORT` | ❌ | `3333` | Backend listening port |
+| `PORT` | ❌ | `3001` | Backend listening port |
 | `NODE_ENV` | ❌ | `development` | `development` / `production` |
 
 ---
